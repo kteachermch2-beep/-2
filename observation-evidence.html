@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관찰 근거 함께 만들기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F7F8; --card:#FFFFFF; --border:#E5E5E7;
+    --text:#1D1D1F; --text-dim:#767678;
+    --accent:#2563EB; --accent-soft:#EFF4FF;
+    --c-teach:#3B82F6; --c-guide:#F5729A; --c-dev:#10B981; --c-work:#8B5CF6;
+    --font:'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);}
+  body{ font-family:var(--font); color:var(--text); min-height:100vh; padding:20px; }
+  .frame{ max-width:600px; margin:0 auto; }
+  h1.title{ font-weight:900; font-size:24px; margin:0 0 4px; letter-spacing:-0.5px; }
+  .subtitle{ font-size:13px; color:var(--text-dim); margin-bottom:20px; line-height:1.5; }
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.03); }
+  .card h2{ font-weight:700; font-size:17px; margin:0 0 4px; }
+  .desc{ font-size:13px; color:var(--text-dim); margin-bottom:14px; line-height:1.55; }
+  label{ display:block; font-size:12.5px; color:var(--text-dim); margin-bottom:5px; font-weight:700; }
+  input[type=text], select{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#FAFAFA; color:var(--text); font-family:var(--font); font-size:14px; margin-bottom:12px; }
+  input[type=text]:focus, select:focus, textarea:focus{ outline:none; border-color:var(--accent); background:#fff; }
+  textarea{ width:100%; min-height:64px; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#FAFAFA; color:var(--text); font-family:var(--font); font-size:13.5px; resize:vertical; }
+  .btn{ font-family:var(--font); font-weight:700; font-size:14px; padding:12px 18px; border-radius:10px; border:none; cursor:pointer; background:var(--accent); color:#fff; width:100%; }
+  .btn.secondary{ background:#fff; color:var(--text); border:1.5px solid var(--border); }
+  .area-section{ border-left:3px solid; padding-left:14px; margin-bottom:22px; }
+  .area-section-head{ font-weight:700; font-size:15px; margin-bottom:12px; }
+  .item-row{ margin-bottom:16px; }
+  .item-num{ display:inline-block; font-size:11px; font-weight:700; color:#fff; background:var(--text-dim); border-radius:5px; padding:1px 6px; margin-right:6px; }
+  .item-text{ font-size:13.5px; line-height:1.5; margin-bottom:8px; color:var(--text); }
+  .status-bar{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-dim); margin-bottom:16px; }
+  .status-bar b{ color:var(--text); }
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--text); color:#fff; font-weight:700; font-size:13px; padding:10px 18px; border-radius:20px; box-shadow:0 6px 20px rgba(0,0,0,0.15); opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:50; }
+  .toast.show{ opacity:1; }
+  .progress-pill{ font-size:11.5px; background:var(--accent-soft); color:var(--accent); font-weight:700; padding:3px 9px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <h1 class="title">관찰 근거 함께 만들기</h1>
+  <div class="subtitle">자기역량진단 20문항 각각에 대해, "이 문항에 응답할 근거를 어떻게 확인할 수 있을지" 조별로 생각을 모읍니다.</div>
+  <div id="app"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// 아래 URL을 본인의 구글 Apps Script 배포 URL로 교체하세요.
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVUH7wbdLYiz6hDJlVe-pqURTlKb4Jl5BSSPAz41-E4smOtNSWKi9f3Gw-NlHZUAzL/exec";
+
+const AREAS = ["교수","학생지도","전문성개발","현장실무"];
+const AREA_COLORS = { "교수":"#3B82F6", "학생지도":"#F5729A", "전문성개발":"#10B981", "현장실무":"#8B5CF6" };
+
+const ITEMS20 = [
+  {id:1, area:"교수", text:"학생들의 학습 이해도에 맞추어 학습·활동 자료를 재구성한다."},
+  {id:2, area:"교수", text:"학생들의 질문이나 의견에 적극 반응하며 탐구적 학습을 유도한다."},
+  {id:3, area:"교수", text:"AI·디지털 기술을 학습하여 적합한 교수학습 과정에 적용한다."},
+  {id:4, area:"교수", text:"교육과정 목표에 부합하는 평가 방법을 설계한다."},
+  {id:5, area:"교수", text:"학생들이 자신의 학습 과정을 평가하고 스스로 점검할 기회를 제공한다."},
+  {id:6, area:"학생지도", text:"학교폭력 예방 및 갈등 조정자 역할을 적극적으로 수행한다."},
+  {id:7, area:"학생지도", text:"학생의 생활 습관이나 학업 태도를 살펴 필요할 때 상담을 진행한다."},
+  {id:8, area:"학생지도", text:"미래 사회가 요구하는 역량을 고려하여 진로 탐색을 지도한다."},
+  {id:9, area:"학생지도", text:"학급 구성원 모두가 존중받는 분위기를 조성한다."},
+  {id:10, area:"학생지도", text:"학급 운영 시 학생들이 함께 의논하고 결정할 수 있는 기회를 제공한다."},
+  {id:11, area:"전문성개발", text:"새롭게 학습한 지식이나 경험을 수업과 생활 지도에 적극적으로 반영한다."},
+  {id:12, area:"전문성개발", text:"예기치 않은 교육환경 변화에도 유연하고 침착하게 대응할 수 있다."},
+  {id:13, area:"전문성개발", text:"학생들의 변화하는 관심사나 문화를 파악하여 수업이나 지도 방식을 개선한다."},
+  {id:14, area:"전문성개발", text:"교사로서 나의 장단점을 파악하고 부족한 점을 보완하려 노력한다."},
+  {id:15, area:"전문성개발", text:"수업이나 생활지도에서의 실패 경험을 성장의 기회로 삼으려 노력한다."},
+  {id:16, area:"현장실무", text:"교육 목표 달성을 위해 학교 구성원들과 적극적으로 소통하며 의견을 교환한다."},
+  {id:17, area:"현장실무", text:"교육 관련 법규 및 지침을 숙지하고 업무에 반영한다."},
+  {id:18, area:"현장실무", text:"여러 행정 업무의 우선순위를 판단하고 조정해 효율적으로 처리한다."},
+  {id:19, area:"현장실무", text:"학부모 상담을 통해 학생의 생활이나 학업 정보를 공유한다."},
+  {id:20, area:"현장실무", text:"동료 교사와 서로의 성장을 지원하는 활동에 적극 참여한다."},
+];
+
+const STORE_KEY = 'evidence-draft-v1';
+let draft = loadDraft();
+
+function loadDraft(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    return raw ? JSON.parse(raw) : { name:"", group:"조1", answers:{}, submitted:false };
+  }catch(e){ return { name:"", group:"조1", answers:{}, submitted:false }; }
+}
+function saveDraft(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(draft)); }catch(e){}
+}
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+
+function render(){
+  const app = document.getElementById('app');
+  const answeredCount = ITEMS20.filter(it => (draft.answers[it.id]||'').trim().length>0).length;
+
+  const sections = AREAS.map(area => {
+    const items = ITEMS20.filter(it=>it.area===area);
+    const rows = items.map(it => `
+      <div class="item-row">
+        <div class="item-text"><span class="item-num">${it.id}</span>${esc(it.text)}</div>
+        <textarea data-item="${it.id}" placeholder="예: 학년협의회에서 공유되는 수업안이나 자료를 통해 확인할 수 있을 것 같다..." oninput="onAnswer(${it.id}, this.value)">${esc(draft.answers[it.id]||'')}</textarea>
+      </div>`).join('');
+    return `<div class="area-section" style="border-left-color:${AREA_COLORS[area]}"><div class="area-section-head" style="color:${AREA_COLORS[area]}">${area}</div>${rows}</div>`;
+  }).join('');
+
+  app.innerHTML = `
+    <div class="card">
+      <label>이름</label>
+      <input type="text" id="my-name" placeholder="예: 민천홍" value="${esc(draft.name||'')}" onchange="setField('name', this.value)">
+      <label>조</label>
+      <select id="my-group" onchange="onGroupChange(this.value)">
+        ${['조1','조2','조3','조4'].map(g=>`<option value="${g}" ${draft.group===g?'selected':''}>${g}</option>`).join('')}
+        <option value="__new__" ${!['조1','조2','조3','조4'].includes(draft.group)?'selected':''}>+ 직접 입력</option>
+      </select>
+      <div id="new-group-box" style="display:${!['조1','조2','조3','조4'].includes(draft.group)?'block':'none'};">
+        <input type="text" id="new-group-input" placeholder="조 이름 입력" value="${!['조1','조2','조3','조4'].includes(draft.group)?esc(draft.group):''}" onchange="setField('group', this.value)">
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div>응답 진행: <b>${answeredCount} / 20</b></div>
+      <div class="progress-pill">${draft.submitted ? '제출됨 ✓' : '작성 중'}</div>
+    </div>
+
+    <div class="card">
+      ${sections}
+    </div>
+
+    <div class="card">
+      <button class="btn" onclick="submitAll()">전체 제출하기</button>
+      <div class="desc" style="margin-top:10px; margin-bottom:0;">제출하면 이름·조와 함께 20개 문항의 답변이 구글 시트로 전송됩니다. 제출 후에도 계속 수정하고 다시 제출할 수 있습니다(다시 누르면 새 기록이 추가됩니다).</div>
+    </div>
+  `;
+}
+function setField(field, value){ draft[field] = value.trim(); saveDraft(); }
+function onGroupChange(v){
+  document.getElementById('new-group-box').style.display = v==='__new__' ? 'block' : 'none';
+  if(v!=='__new__'){ draft.group = v; saveDraft(); }
+}
+function onAnswer(id, val){ draft.answers[id] = val; saveDraft(); updateStatusBarOnly(); }
+function updateStatusBarOnly(){
+  const answeredCount = ITEMS20.filter(it => (draft.answers[it.id]||'').trim().length>0).length;
+  const bar = document.querySelector('.status-bar b');
+  if(bar) bar.textContent = `${answeredCount} / 20`;
+}
+
+function submitAll(){
+  if(!draft.name){ showToast('이름을 입력해주세요'); return; }
+  const groupSel = document.getElementById('my-group').value;
+  if(groupSel==='__new__'){
+    const ng = document.getElementById('new-group-input').value.trim();
+    if(!ng){ showToast('조 이름을 입력해주세요'); return; }
+    draft.group = ng;
+  }
+  saveDraft();
+
+  const rows = ITEMS20.map(it => ({
+    itemId: it.id,
+    area: it.area,
+    itemText: it.text,
+    response: (draft.answers[it.id]||'').trim()
+  })).filter(r => r.response.length>0);
+
+  if(rows.length===0){ showToast('최소 1개 문항에는 답변해주세요'); return; }
+
+  sendToGoogleSheet({ name: draft.name, group: draft.group, rows });
+  draft.submitted = true;
+  saveDraft();
+  showToast(`제출했어요! (${rows.length}개 문항)`);
+  render();
+}
+
+function sendToGoogleSheet(payload){
+  if(!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.indexOf('여기에') === 0){
+    console.warn('GOOGLE_SCRIPT_URL이 설정되지 않아 구글 시트 전송을 건너뜁니다.');
+    return;
+  }
+  fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).catch(err => console.warn('구글 시트 전송 중 오류(로컬 저장은 정상 완료됨):', err));
+}
+
+render();
+</script>
+</body>
+</html>
